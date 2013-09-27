@@ -1,5 +1,4 @@
 
-
 /** @(#)octoBasicWhiteStreak.ino 1.0.0 2013-09-25
 
   Purpose     : Software for a OCTOWS2811 LED array that pushes a single white
