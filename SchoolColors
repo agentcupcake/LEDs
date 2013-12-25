@@ -1,0 +1,96 @@
+// -------------------------------
+//		CONFIG
+// -------------------------------
+
+#include <Adafruit_NeoPixel.h>
+// (PixelsInStrip, PinNumber, PixelType)
+#define PIN  2
+#define PIXELNUM 59
+Adafruit_NeoPixel strip = Adafruit_NeoPixel(PIXELNUM, PIN, NEO_GRB + NEO_KHZ800);
+
+// -------------------------------
+//		SETUP
+// -------------------------------
+
+void setup() {
+  strip.setBrightness(64);
+  strip.begin();
+  strip.show();
+}
+
+// -------------------------------
+//		MAIN
+// -------------------------------
+
+void loop() {
+  int patternPicker = random(0, 6);
+
+switch (patternPicker) {
+    case 1:
+      glitter(300);
+      break;
+    case 2:
+      colorWipe(0xFF0000);
+      break;
+    case 3:
+      colorWipe(0xFFFF00);
+      break;
+    case 4:
+      colorWipe(0x000000);
+      break;
+    case 5:
+      chase(0xFFFF00);
+      break;
+    default: 
+      chase(0xFF0000);
+  }
+  
+
+}
+
+// -------------------------------
+//		FUNCTIONS
+// -------------------------------
+
+
+void glitter (int frames) {
+  int colorPicker;
+  int pixelPicker;
+  for (int i = 0; i < frames; i++) {
+    colorPicker = random (0, 3);
+    pixelPicker = random (0, PIXELNUM + 1);
+    if (colorPicker == 0) {
+      strip.setPixelColor (pixelPicker, 0xFF0000);
+    }
+    if (colorPicker == 1) {
+      strip.setPixelColor (pixelPicker, 0xFFFF00);
+    }
+    if (colorPicker == 2) {
+      strip.setPixelColor (pixelPicker, 0x000000);
+    }    
+    
+    strip.show();
+    delay (30);
+  }
+} 
+
+
+  
+void colorWipe (int color) {
+  for (int i = 0; i < PIXELNUM; i++) {
+    strip.setPixelColor (i, color);
+    strip.show();
+    delay(50);
+  } 
+}
+
+
+
+void chase (int color) {
+  for (int i = 0; i < PIXELNUM; i++) {
+    strip.setPixelColor (i-1, 0x000000);
+    strip.setPixelColor (i, color);
+    strip.show();
+    delay(50);
+  } 
+}
