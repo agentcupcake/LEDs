@@ -1,0 +1,387 @@
+/* This sketch includes a few basic functions for WS2811/2812 LED strips 
+using the OCTO library, such as fading between colors and running a color wipe.
+It's made to be easily customizable: just call the function, adjust the 
+parameters to the length/color/delay/etc desired, and run it.
+
+I will update it as I come up with more and refine the existing ones.
+
+THINGS YOU MUST DO:
+- Install OctoWS2811 library
+- Enter number of LEDs per strip
+
+Made by LIANA, with help from NAIM
+2014 Mar 22
+
+*/
+
+
+// -------------------------------
+//		CONFIG
+// -------------------------------
+
+#include <OctoWS2811.h>
+
+// How many LEDs are on each strip?
+const int ledsPerStrip = 60;
+
+// Some basic colors, named.
+
+#define RED 0xFF0000
+#define GREEN 0x00FF00
+#define BLUE 0x0000FF
+
+#define YELLOW 0xFFFF00
+#define LTBLUE 0x00FFFF
+#define PURPLE 0xFF00FF
+
+#define BLACK 0x000000
+#define WHITE 0xFFFFFF
+
+// LEAVE THIS STUFF ALONE
+
+DMAMEM int displayMemory[ledsPerStrip*6];
+int drawingMemory[ledsPerStrip*6];
+
+const int config = WS2811_GRB | WS2811_800kHz;
+OctoWS2811 leds(ledsPerStrip, displayMemory, drawingMemory, config);
+
+// -------------------------------
+//		SETUP
+// -------------------------------
+
+void setup() {
+
+  leds.begin();
+  leds.show();
+
+}
+
+// -------------------------------
+//		MAIN
+// -------------------------------
+
+void loop() {
+
+  // Sample calls.
+
+   wipeStrip (BLUE, ledsPerStrip, 50);
+   fadeOut (BLUE, ledsPerStrip, 2);  
+   delay (50);
+   fadeInTrue (0xA000F0, ledsPerStrip, 3);
+   fadeOutTrue (0xA000F0, ledsPerStrip, 3);
+   crossFade (BLUE, RED, 64, ledsPerStrip, 5);
+   crossFade (RED, GREEN, 72, ledsPerStrip, 5);
+   crossFade (GREEN, BLUE, 64, ledsPerStrip, 5);
+   crossFade (BLUE, WHITE, 64, ledsPerStrip, 5);
+   crossFade (WHITE, BLACK, 64, ledsPerStrip, 5);
+   crossFade (BLACK, RED, 64, 20, 5);
+   crossFade (RED, BLUE, 64, 20, 20);
+
+}
+
+
+// -------------------------------
+//		METHODS
+// -------------------------------
+
+
+// ++++++++++++++++++++++++
+/* FLIPSTRIP: takes one 
+ color, sets entire strip. 
+ No motion. */
+// ++++++++++++++++++++++++
+
+void flipStrip (int color, int length) {
+
+  for (int i = 0; i < length; i++) {
+    leds.setPixel (i, color); 
+  }
+  leds.show();
+
+}
+
+// ++++++++++++++++++++++++
+/* WIPESTRIP: takes one color,
+ pushes it down (zero to length)
+ until strip is full. */
+// ++++++++++++++++++++++++
+
+void wipeStrip (int color, int length, int delayTime) {
+  for (int i = 0; i < length; i++) {
+    leds.setPixel (i, color); 
+    leds.show();
+    delay (delayTime);
+  }
+}
+
+// ++++++++++++++++++++++++
+/* FADEOUT: takes one color
+ and a given length/start, 
+ and fades out to black.*/
+// ++++++++++++++++++++++++
+/* NOTE: This is NOT a "true
+ color" function; if the RGB
+ values are uneven, you may
+ see some odd shifts (fading
+ to white or blue instead of
+ staying to the color). It's
+ an interesting effect, but
+ if you need it to be strict, 
+ try "FadeOutTrue". */
+// ++++++++++++++++++++++++
+
+void fadeOut (int givenColor, int length, int delayTime) {
+
+  // takes the given color and gives it a new name, to manipulate.
+  int color = givenColor;
+  // also, splits the hex # into separate RGB values.
+  int redValue = 0xFF & (color >> 16);
+  int greenValue = 0xFF & (color >> 8);
+  int blueValue = 0xFF & (color);
+
+  while (color != 0x0) { // until it's black... 
+    if (redValue > 0) { // until red reaches 0...
+      redValue --;      // decrement.
+    }      
+    if (greenValue > 0) {  // etc...
+      greenValue --;
+    }      
+    if (blueValue > 0) {
+      blueValue --;
+    }
+
+    // repackages back into hex value
+    color = (redValue<<16) + (greenValue<<8) + blueValue;
+    // posts it to entire strip
+    flipStrip(color, length);
+    delay (delayTime);
+  }
+}
+
+// ++++++++++++++++++++++++
+/* FADEIN: takes one color
+ and a given length/start, 
+ and fades in from black.*/
+// ++++++++++++++++++++++++
+/* NOTE: This is NOT a "true
+ color" function; if the RGB
+ values are uneven, you may
+ see some odd shifts (fading
+ to white or blue instead of
+ staying to the color). It's
+ an interesting effect, but
+ if you need it to be strict, 
+ try "FadeInTrue". */
+// ++++++++++++++++++++++++
+
+
+void fadeIn (int color, int length, int delayTime) {
+
+  // takes the given color and gives it a new name  
+  int givenColor = color;
+  // also, splits it into RGB values.
+  int givenRed = 0xFF & (givenColor >> 16);
+  int givenGreen = 0xFF & (givenColor >> 8);
+  int givenBlue = 0xFF & (givenColor);
+
+  // gives a placeholder for the current color, which starts at black.
+  int currentColor = 0x000000;
+  // also, splits it into RGB values, to manipulate.
+  int currentRed = 0xFF & (currentColor >> 16);
+  int currentGreen = 0xFF & (currentColor >> 8);
+  int currentBlue = 0xFF & (currentColor);
+
+  while (currentColor != givenColor) {  // as long as it hasn't reached the
+    // given color....
+    if (currentRed < givenRed) { // if the reds don't match...
+      currentRed ++;   // increment.
+    }      
+    if (currentGreen < givenGreen) {   // etc...
+      currentGreen ++;
+    }      
+    if (currentBlue < givenBlue) {
+      currentBlue ++;
+    }
+
+    // repackages RGB into hex value
+    currentColor = (currentRed<<16) + (currentGreen<<8) + currentBlue;
+    // pushes it to full strip
+    flipStrip(currentColor, length);
+    delay (delayTime);
+  }
+
+}
+
+
+
+
+// ++++++++++++++++++++++++
+/* FADEINTRUE: takes one color
+ and a given length/start, 
+ and fades in from black.*/
+// ++++++++++++++++++++++++
+/* NOTE: This is a "true
+ color" function; instead
+ of working with absolute
+ numbers (just adding a
+ one, like the other 
+ fade in function) it
+ uses percentages to keep
+ the colors from going wonky
+ if one RGB value fades 
+ faster than the others. */
+// ++++++++++++++++++++++++
+
+void fadeInTrue (int color, int length, int delayTime) {
+
+  // renames given color, and splits it into separate RGB values.  
+  int givenColor = color;
+  int givenRed = 0xFF & (givenColor >> 16);
+  int givenGreen = 0xFF & (givenColor >> 8);
+  int givenBlue = 0xFF & (givenColor);
+
+  // creates a placeholder for current color, starting at 0.
+  int currentColor = 0x000000;
+  // initializes variables to hold RGB values.
+  int currentRed, currentGreen, currentBlue;
+
+  // Since R, G, and B are 0 to FF, or 0 to 255, we run it only to its max value.
+  for (int i = 0; i < 255; i++) {
+
+    // Each step gives 1% more.
+    float scale = i/255.0;
+
+    // Calculates how much R, G, B to add, based on percentage.
+    currentRed = (int)(scale*givenRed);
+    currentGreen = (int)(scale*givenGreen);
+    currentBlue = (int)(scale*givenBlue);
+
+    // Repacks and posts.
+    currentColor = (currentRed<<16) + (currentGreen<<8) + currentBlue;
+    flipStrip(currentColor, length);
+    delay (delayTime);
+  }
+
+}
+
+
+// ++++++++++++++++++++++++
+/* FADEOUTTRUE: takes one color
+ and a given length/start, 
+ and fades out to black.*/
+// ++++++++++++++++++++++++
+/* NOTE: This is a "true
+ color" function; instead
+ of working with absolute
+ numbers (just subtracting 
+ a one, like the other 
+ fade out function) it
+ uses percentages to keep
+ the colors from going wonky
+ if one RGB value fades 
+ faster than the others. */
+// ++++++++++++++++++++++++
+
+
+void fadeOutTrue (int color, int length, int delayTime) {
+
+  // renames given color, and splits it into separate RGB values.  
+  int givenColor = color;
+  int givenRed = 0xFF & (givenColor >> 16);
+  int givenGreen = 0xFF & (givenColor >> 8);
+  int givenBlue = 0xFF & (givenColor);
+
+  // creates a placeholder for current color, starting at 0.
+  int currentColor = color;
+  // initializes variables for RGB values
+  int currentRed, currentGreen, currentBlue;
+
+  // Since R, G, and B are 0 to FF, or 0 to 255, we run it only from its max value.
+  for (int i = 255; i > 0; i--) {
+
+    // Each step takes 1% more.
+    float scale = i/255.0;
+
+    // Calculates how much R, G, B to add, based on percentage.
+    currentRed = (int)(scale*givenRed);
+    currentGreen = (int)(scale*givenGreen);
+    currentBlue = (int)(scale*givenBlue);
+
+    // Repacks and posts.
+    currentColor = (currentRed<<16) + (currentGreen<<8) + currentBlue;
+    flipStrip(currentColor, length);
+    delay (delayTime);
+  }
+
+}
+
+
+
+// ++++++++++++++++++++++++
+/* CROSSFADE: 
+ take two colors and fades 
+ from one to the other. */
+// ++++++++++++++++++++++++
+
+
+void crossFade (int colorOut, int colorIn, int overlap, int length, int delayTime) {
+
+  int color1 = colorOut;
+  int red1 = 0xFF & (color1 >> 16);
+  int green1 = 0xFF & (color1 >> 8);
+  int blue1 = 0xFF & (color1);
+
+  int color2 = colorIn;
+  int red2 = 0xFF & (color2 >> 16);
+  int green2 = 0xFF & (color2 >> 8);
+  int blue2 = 0xFF & (color2);
+
+  // creates a placeholder for current color, starting at 0.
+  int currentColor = colorOut;
+  // initializes variables for RGB values
+  int currentRed, currentGreen, currentBlue;
+
+  float outScale = 0;
+  float inScale = 0;
+
+  // Since R, G, and B are 0 to FF, or 0 to 255, we run it only from its max value.
+  for (int i = 0; i < (2*255-overlap); i++) {
+
+// Fades out one color.
+
+    if (i<(255-overlap)) {
+      outScale = (255-i)/255.0;
+      inScale = 0;
+    } 
+// Continues fading it out, and starts bringing in the new one.
+
+    else if (i < 255) {
+      outScale = (255-i)/255.0;
+      inScale = (i-(255-overlap))/255.0;
+    } 
+
+// Finishes bringing in the new color.
+    else {
+      outScale = 0;
+      inScale = (i-(255-overlap))/255.0;
+    }
+
+// Calculates how much R, G, B to add, based on percentage.
+    currentRed = (int)(outScale*red1+inScale*red2);
+    currentGreen = (int)(outScale*green1+inScale*green2);
+    currentBlue = (int)(outScale*blue1+inScale*blue2);
+
+// Repacks and posts.
+    currentColor = (currentRed<<16) + (currentGreen<<8) + currentBlue;
+    flipStrip(currentColor, length);
+    delay (delayTime);
+  }
+
+}
+
+/*
+
+"If it ain't broke... it doesn't have enough accessories yet!"
+- guy from Math Camp, Burning Man 2010
+
+*/
